@@ -8,7 +8,6 @@ Puppet module for managing Puppet Bolt.
 2. [Setup - The basics of getting started with bolt](#setup)
     * [What bolt affects](#what-bolt-affects)
     * [Setup requirements](#setup-requirements)
-    * [Beginning with bolt](#beginning-with-bolt)
 3. [Usage - Configuration options and additional functionality](#usage)
 4. [Limitations - OS compatibility, etc.](#limitations)
 5. [Development - Guide for contributing to the module](#development)
@@ -35,13 +34,33 @@ module. You can use the
 [ssh_sudoers](https://github.com/Puppet-Finland/puppet-ssh_sudoers) module to
 handle that part.
 
-### Beginning with bolt
-
-TODO
-
 ## Usage
 
-TODO
+Install Bolt:
+
+    include ::bolt::install
+
+Install Bolt and setup Bolt Controller node with PuppetDB inventory from a
+profile:
+
+    $inventory_path = '/root/inventory.yaml'
+    $inventory_template_path = '/root/inventory-template.yaml'
+    
+    file { $inventory_template_path:
+      ensure  => 'present',
+      content => template('profile/inventory-template.yaml.erb'),
+      owner   => 'root',
+      group   => 'root',
+      mode    => '0640',
+    }
+    
+    class { '::bolt::controller':
+      user                    => 'root',
+      puppetdb_url            => 'https://puppet.example.org:8081',
+      inventory_path          => $inventory_path,
+      inventory_template_path => $inventory_template_path,
+      require                 => File[$inventory_template_path],
+     }
 
 ## Limitations
 
