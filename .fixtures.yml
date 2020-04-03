@@ -3,4 +3,12 @@
 ---
 fixtures:
   forge_modules:
-#     stdlib: "puppetlabs/stdlib"
+    apt:
+      repo: "puppetlabs/apt"
+      ref: "7.4.1"
+    cron_core:
+      repo: "puppetlabs/cron_core"
+      ref: "1.0.3"
+    stdlib:
+      repo: "puppetlabs/stdlib"
+      ref: "6.2.0"
