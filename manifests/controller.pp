@@ -7,7 +7,7 @@
 #   The local user that is used for outbound SSH connections.
 # @param puppetdb_url
 #   URL to the PuppetDB instance that provides data for the inventory
-# @param inventory_template_source
+# @param inventory_template_path
 #   Puppet Bolt inventory template path. The inventory will be populated by
 #   "bolt-inventory-pdb".
 # @param bolt_inventory_pdb
@@ -22,28 +22,28 @@
 #   The number of inventory updates per hour
 # @param cron_email
 #   Email address for cron reports
-# @param inventory
+# @param inventory_path
 #   Path to the inventory file. Defaults to ~/inventory.yaml of the Bolt user.
 #
 # @example
 #   class { '::bolt::controller':
-#     user                      => 'bolt',
-#     puppetdb_url              => 'https://puppet.example.org:8081',
-#     inventory_template_source => '/home/bolt/inventory-template.yaml',
+#     user                    => 'bolt',
+#     puppetdb_url            => 'https://puppet.example.org:8081',
+#     inventory_template_path => '/home/bolt/inventory-template.yaml',
 #   }
 #
 class bolt::controller
 (
   String           $user,
   String           $puppetdb_url,
-  String           $inventory_template_source,
+  String           $inventory_template_path,
   String           $bolt_inventory_pdb,
   String           $cacert,
   String           $cert,
   String           $key,
   Integer          $hourly_inventory_updates,
   String           $cron_email,
-  Optional[String] $inventory = undef,
+  Optional[String] $inventory_path = undef,
 )
 {
 
@@ -55,13 +55,13 @@ class bolt::controller
     default => "/home/${user}"
   }
 
-  $inventory_file = $inventory ? {
+  $inventory_file = $inventory_path ? {
     undef   => "${homedir}/inventory.yaml",
-    default => $inventory,
+    default => $inventory_path,
   }
 
   cron { 'update-bolt-inventory-from-puppetdb':
-    command     => "${bolt_inventory_pdb} ${inventory_template_source} --cacert ${cacert} --cert ${cert} --key ${key} --url ${puppetdb_url} -o ${inventory_file}",
+    command     => "${bolt_inventory_pdb} ${inventory_template_path} --cacert ${cacert} --cert ${cert} --key ${key} --url ${puppetdb_url} -o ${inventory_file}", # lint:ignore:140chars
     user        => 'root',
     minute      => "*/${hourly_inventory_updates}",
     environment => [ 'PATH=/bin:/usr/bin:/usr/local/bin:/opt/puppetlabs/bin', "MAILTO=${cron_email}" ],
