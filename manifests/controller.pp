@@ -1,13 +1,36 @@
 # @summary Setup Bolt controller
 #
-# Configure a Puppet Bolt controller node
+# Configure a Puppet Bolt controller node. Parameter defaults come from
+# module-level Hiera.
 #
 # @param user
 #   The local user that is used for outbound SSH connections.
+# @param puppetdb_url
+#   URL to the PuppetDB instance that provides data for the inventory
 # @param inventory_template_source
-#   Inventory template file for Puppet Bolt. The inventory will be populated by "bolt-inventory-pdb".
+#   Puppet Bolt inventory template path. The inventory will be populated by
+#   "bolt-inventory-pdb".
+# @param bolt_inventory_pdb
+#   Path to the inventory update script
+# @param cacert
+#   The CA certificate used when connecting to PuppetDB
+# @param cert
+#   The certificate used when connecting to PuppetDB
+# @param key
+#   The private key used when connecting to PuppetDB
+# @param hourly_inventory_updates
+#   The number of inventory updates per hour
+# @param cron_email
+#   Email address for cron reports
+# @param inventory
+#   Path to the inventory file. Defaults to ~/inventory.yaml of the Bolt user.
+#
 # @example
-#   include bolt::controller
+#   class { '::bolt::controller':
+#     user                      => 'bolt',
+#     puppetdb_url              => 'https://puppet.example.org:8081',
+#     inventory_template_source => '/home/bolt/inventory-template.yaml',
+#   }
 #
 class bolt::controller
 (
