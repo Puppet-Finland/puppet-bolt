@@ -14,8 +14,8 @@ Puppet module for managing Puppet Bolt.
 
 ## Description
 
-Install Puppet Bolt on Bolt controllers. Optionally configure automatic
-PuppetDB inventory updates.
+Install Puppet Bolt on Bolt controllers. Optionally configure connectivity
+to PuppetDB for PuppetDB-based inventories.
 
 ## Setup
 
@@ -25,7 +25,7 @@ On Bolt controllers this module manages:
 
 * Puppet Bolt installation from Puppetlabs' puppet-tools-release repositories
 * Optional features
-    * Setting up and keeping a PuppetDB-based inventory up-to-date
+    * Setting up certificates/keys for Bolt inventory v2 PuppetDB plugin
 
 ### Setup Requirements
 
@@ -40,27 +40,23 @@ Install Bolt:
 
     include ::bolt::install
 
-Install Bolt and setup Bolt Controller node with PuppetDB inventory from a
-profile:
+Install Bolt and reuse the node's Puppet certificates for connecting to
+PuppetDB. The inventory and bolt configuration is assumed to be in the control
+repository:
 
-    $inventory_path = '/root/inventory.yaml'
-    $inventory_template_path = '/root/inventory-template.yaml'
-    
-    file { $inventory_template_path:
-      ensure  => 'present',
-      content => template('profile/inventory-template.yaml.erb'),
-      owner   => 'root',
-      group   => 'root',
-      mode    => '0640',
+    user { 'bolt':
+      ensure     => 'present',
+      managehome => true,
     }
     
-    class { '::bolt::controller':
-      user                    => 'root',
-      puppetdb_url            => 'https://puppet.example.org:8081',
-      inventory_path          => $inventory_path,
-      inventory_template_path => $inventory_template_path,
-      require                 => File[$inventory_template_path],
-     }
+    ::bolt::controller { 'mysite':
+      user                          => 'bolt',
+      use_puppet_certs_for_puppetdb => true,
+      require                       => User['bolt'],
+    }
+
+It is also possible to define cert/key contents manually instead of using
+Puppet certificates.
 
 ## Limitations
 
@@ -69,10 +65,6 @@ There are a couple of "by design" limitations:
 * Local system users are not managed on the controller
 * Generic SSH and sudo configurations must be handled outside this module, with [puppet-sshd_sudoers](https://github.com/Puppet-Finland/puppet-ssh_sudoers) or something similar. This is to keep this module Bolt-specific and the sshd_sudoers module usable with Ansible, Fabric and other SSH-based management tools.
 * Target nodes do not require Bolt-specific configurations so they are not touched by this module.
-
-Other limitions are:
-
-* Controller setup is only supported for Debian derivatives; adding support for RedHat or other platforms would be fairly easy.
 
 ## Development
 

@@ -1,52 +1,44 @@
-# @summary Setup Bolt controller
+# @summary enable connectivity to a PuppetDB instance
 #
-# Configure a Puppet Bolt controller node. Parameter defaults come from
-# module-level Hiera.
+# Configure a node to connect to a PuppetDB instance, primarily to allow
+# Bolt's PuppetDB inventory v2 plugin to work.
 #
+# @param id
+#   An identifier for this particular PuppetDB connection. This is used as
+#   a part of the certificate path to distinguish between multiple control
+#   repositories/inventories.
 # @param user
 #   The local user that is used for outbound SSH connections.
-# @param puppetdb_url
-#   URL to the PuppetDB instance that provides data for the inventory
-# @param inventory_template_path
-#   Puppet Bolt inventory template path. The inventory will be populated by
-#   "bolt-inventory-pdb".
-# @param bolt_inventory_pdb
-#   Path to the inventory update script
-# @param cacert
-#   The CA certificate used when connecting to PuppetDB
-# @param cert
-#   The certificate used when connecting to PuppetDB
-# @param key
-#   The private key used when connecting to PuppetDB
-# @param hourly_inventory_updates
-#   The number of inventory updates per hour
-# @param cron_email
-#   Email address for cron reports
-# @param inventory_path
-#   Path to the inventory file. Defaults to ~/inventory.yaml of the Bolt user.
+# @param use_puppet_certs_for_puppetdb
+#   Reuse existing Puppet certificates for PuppetDB connections. If you define
+#   this you won't need to define any of the other content/source
+#   parameters, assuming the certificate filename matches "${::fqdn}.pem".
+# @param cacert_content
+#   Content of the CA certificate used when connecting to PuppetDB
+# @param cacert_source
+#   Source for the CA certificate used when connecting to PuppetDB
+# @param cert_content
+#   Content of the certificate used when connecting to PuppetDB
+# @param cert_source
+#   Source for the certificate used when connecting to PuppetDB
+# @param key_content
+#   Content of the private key used when connecting to PuppetDB
+# @param key_source
+#   Source for the private key used when connecting to PuppetDB
 #
-# @example
-#   class { '::bolt::controller':
-#     user                    => 'bolt',
-#     puppetdb_url            => 'https://puppet.example.org:8081',
-#     inventory_template_path => '/home/bolt/inventory-template.yaml',
-#   }
-#
-class bolt::controller
+define bolt::controller
 (
   String           $user,
-  String           $puppetdb_url,
-  String           $inventory_template_path,
-  String           $bolt_inventory_pdb,
-  String           $cacert,
-  String           $cert,
-  String           $key,
-  Integer          $hourly_inventory_updates,
-  String           $cron_email,
-  Optional[String] $inventory_path = undef,
+  String           $id = $title,
+  Boolean          $use_puppet_certs_for_puppetdb = true,
+  Optional[String] $cacert_source = undef,
+  Optional[String] $cacert_content = undef,
+  Optional[String] $cert_source = undef,
+  Optional[String] $cert_content = undef,
+  Optional[String] $key_source = undef,
+  Optional[String] $key_content = undef,
 )
 {
-
   include ::bolt::install
 
   # The root user requires special treatment
@@ -55,22 +47,64 @@ class bolt::controller
     default => "/home/${user}"
   }
 
-  $inventory_file = $inventory_path ? {
-    undef   => "${homedir}/inventory.yaml",
-    default => $inventory_path,
+  # Create base directory structure. As we may have many instances of this
+  # define for any particular user use ensure_resource.
+  #
+  ensure_resource('file',
+                  [ "${homedir}/.puppetlabs",
+                    "${homedir}/.puppetlabs/etc",
+                    "${homedir}/.puppetlabs/etc/bolt" ],
+                  { 'ensure' => 'directory',
+                    'owner'  => $user,
+                    'group'  => $user,
+                    'mode'   => '0750', })
+
+  # Create directory structure required for certificates used by Bolt to reach out
+  # to PuppetDB
+  file {[ "${homedir}/.puppetlabs/etc/bolt/${id}",
+          "${homedir}/.puppetlabs/etc/bolt/${id}/ssl",
+          "${homedir}/.puppetlabs/etc/bolt/${id}/ssl/certs",
+          "${homedir}/.puppetlabs/etc/bolt/${id}/ssl/private_keys", ]:
+          ensure  => 'directory',
+          owner   => $user,
+          group   => $user,
+          mode    => '0750',
+          require => File["${homedir}/.puppetlabs/etc/bolt"],
   }
 
-  cron { 'update-bolt-inventory-from-puppetdb':
-    command     => "${bolt_inventory_pdb} ${inventory_template_path} --cacert ${cacert} --cert ${cert} --key ${key} --url ${puppetdb_url} -o ${inventory_file}", # lint:ignore:140chars
-    user        => 'root',
-    minute      => "*/${hourly_inventory_updates}",
-    environment => [ 'PATH=/bin:/usr/bin:/usr/local/bin:/opt/puppetlabs/bin', "MAILTO=${cron_email}" ],
+  # If this node is joined to the same Puppetmaster as the PuppetDB we can reuse
+  # this node's Puppet certificates for PuppetDB connections.
+  if $use_puppet_certs_for_puppetdb {
+    $_cacert_source  = '/etc/puppetlabs/puppet/ssl/certs/ca.pem'
+    $_cert_source  = "/etc/puppetlabs/puppet/ssl/certs/${::fqdn}.pem"
+    $_key_source  = "/etc/puppetlabs/puppet/ssl/private_keys/${::fqdn}.pem"
+  } else {
+    $_cacert_source  = $cacert_source
+    $_cert_source  = $cert_source
+    $_key_source  = $key_source
   }
 
-  file { $inventory_file:
-    ensure => 'present',
-    owner  => $user,
-    group  => $user,
-    mode   => '0600',
+  file {
+    default:
+      ensure => 'present',
+      owner  => $user,
+      group  => $user,
+      mode   => '0640',
+    ;
+    ["${homedir}/.puppetlabs/etc/bolt/${id}/ssl/certs/cert.pem"]:
+      source  => $_cert_source,
+      content => $cert_content,
+      require => File["${homedir}/.puppetlabs/etc/bolt/${id}/ssl/certs"],
+    ;
+    ["${homedir}/.puppetlabs/etc/bolt/${id}/ssl/certs/ca.pem"]:
+      source  => $_cacert_source,
+      content => $cacert_content,
+      require => File["${homedir}/.puppetlabs/etc/bolt/${id}/ssl/certs"],
+    ;
+    ["${homedir}/.puppetlabs/etc/bolt/${id}/ssl/private_keys/key.pem"]:
+      source  => $_key_source,
+      content => $key_content,
+      require => File["${homedir}/.puppetlabs/etc/bolt/${id}/ssl/private_keys"],
+    ;
   }
 }
