@@ -1,8 +1,1 @@
 ---
-bolt::controller::bolt_inventory_pdb: '/opt/puppetlabs/bin/bolt-inventory-pdb'
-bolt::controller::hourly_inventory_updates: 6
-bolt::controller::inventory_template_source: '/etc/puppetlabs/code/environments/production/inventory-template.yaml'
-bolt::controller::cron_email: 'root@localhost'
-bolt::controller::cacert: '/etc/puppetlabs/puppetdb/ssl/ca.pem'
-bolt::controller::cert: '/etc/puppetlabs/puppetdb/ssl/public.pem'
-bolt::controller::key: '/etc/puppetlabs/puppetdb/ssl/private.pem'
