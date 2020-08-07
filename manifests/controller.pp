@@ -26,9 +26,9 @@
 # @param key_source
 #   Source for the private key used when connecting to PuppetDB
 #
-class bolt::controller
+define bolt::controller
 (
-  String           $id,
+  String           $id = $title,
   String           $user,
   Boolean          $use_puppet_certs_for_puppetdb = true,
   Optional[String] $cacert_source = undef,
