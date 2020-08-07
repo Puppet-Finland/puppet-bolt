@@ -83,7 +83,7 @@ class bolt::controller
       mode   => '0640',
     ;
     ["${homedir}/.puppetlabs/etc/bolt/${id}/ssl/certs/cert.pem"]:
-      source  => $cert_source,
+      source  => $_cert_source,
       content => $cert_content,
       require => File["${homedir}/.puppetlabs/etc/bolt/${id}/ssl/certs"],
     ;
@@ -93,7 +93,7 @@ class bolt::controller
       require => File["${homedir}/.puppetlabs/etc/bolt/${id}/ssl/certs"],
     ;
     ["${homedir}/.puppetlabs/etc/bolt/${id}/ssl/private_keys/key.pem"]:
-      source  => $key_source,
+      source  => $_key_source,
       content => $key_content,
       require => File["${homedir}/.puppetlabs/etc/bolt/${id}/ssl/private_keys"],
     ;
